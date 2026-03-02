@@ -5,7 +5,8 @@ import * as XLSX from "xlsx";
 import "leaflet/dist/leaflet.css";
 
 import geojsonUrl from "../irq_admin_boundaries.geojson/osm-boundaries-18201500-18201560.geojson?url";
-import { MAP_ATTRIBUTION, MAP_TILE_URL } from "./mapConfig";
+import { getMapConfig } from "./mapConfig";
+import { useMapType } from "./MapTypeContext";
 import boundaryCentersXlsxUrl from "../boundary_centers.xlsx?url";
 
 function parseBoundaryCentersXlsx(buffer) {
@@ -50,6 +51,8 @@ function FitBounds({ data }) {
 }
 
 export default function OsmBoundariesPage() {
+  const { mapTypeId, setMapTypeId, MAP_TYPES } = useMapType();
+  const mapConfig = getMapConfig(mapTypeId);
   const [data, setData] = useState(null);
   const [boundaryPoints, setBoundaryPoints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +121,34 @@ export default function OsmBoundariesPage() {
         <span style={{ fontWeight: 700 }}>
           OSM boundaries (saved GeoJSON)
         </span>
+        <fieldset
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            border: "1px solid rgba(255,255,255,0.3)",
+            borderRadius: 8,
+            padding: "6px 12px",
+            margin: 0,
+          }}
+        >
+          <legend style={{ fontSize: 12, opacity: 0.9 }}>Map type</legend>
+          {MAP_TYPES.map((t) => (
+            <label
+              key={t.id}
+              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}
+            >
+              <input
+                type="radio"
+                name="mapType"
+                value={t.id}
+                checked={mapTypeId === t.id}
+                onChange={() => setMapTypeId(t.id)}
+              />
+              {t.label}
+            </label>
+          ))}
+        </fieldset>
         {loading && <span style={{ fontSize: 13 }}>Loading…</span>}
         {error && <span style={{ fontSize: 13, color: "#ffb3b3" }}>{error}</span>}
         {data && !loading && (
@@ -158,7 +189,7 @@ export default function OsmBoundariesPage() {
           style={{ width: "100%", height: "100%" }}
           scrollWheelZoom
         >
-          <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
+          <TileLayer attribution={mapConfig.attribution} url={mapConfig.url} />
           {data && <FitBounds data={data} />}
           {data && showBorders && (
             <GeoJSON

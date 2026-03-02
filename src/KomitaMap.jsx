@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import * as XLSX from "xlsx";
 import "leaflet/dist/leaflet.css";
-import { MAP_ATTRIBUTION, MAP_TILE_URL } from "./mapConfig";
+import { getMapConfig } from "./mapConfig";
+import { useMapType } from "./MapTypeContext";
 
 import boundaryCentersUrl from "../boundary_centers.xlsx?url";
 
@@ -49,6 +50,8 @@ function parseBoundaryCentersXlsx(buffer) {
 }
 
 export default function KomitaMap() {
+  const { mapTypeId } = useMapType();
+  const mapConfig = getMapConfig(mapTypeId);
   const [points, setPoints] = useState([]);
   const [error, setError] = useState("");
 
@@ -107,7 +110,7 @@ export default function KomitaMap() {
           style={{ width: "100%", height: "100%" }}
           scrollWheelZoom
         >
-          <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
+          <TileLayer attribution={mapConfig.attribution} url={mapConfig.url} />
           {points.map((point, idx) => (
             <CircleMarker
               key={`${point.name}-${idx}`}

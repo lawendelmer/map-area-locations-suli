@@ -9,7 +9,8 @@ import {
 } from "react-leaflet";
 import * as XLSX from "xlsx";
 import "leaflet/dist/leaflet.css";
-import { MAP_ATTRIBUTION, MAP_TILE_URL } from "./mapConfig";
+import { getMapConfig } from "./mapConfig";
+import { useMapType } from "./MapTypeContext";
 
 import boundaryCentersUrl from "../boundary_centers.xlsx?url";
 
@@ -79,6 +80,8 @@ function MapClickHandler({ onMapClick }) {
 const defaultCenter = [35.561355, 45.411612];
 
 export default function RegistrationPage() {
+  const { mapTypeId } = useMapType();
+  const mapConfig = getMapConfig(mapTypeId);
   const [points, setPoints] = useState([]);
   const [error, setError] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -575,7 +578,7 @@ export default function RegistrationPage() {
                 scrollWheelZoom
                 zoomControl={false}
               >
-                <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
+                <TileLayer attribution={mapConfig.attribution} url={mapConfig.url} />
                 <MapCenterController center={mapCenter} />
                 <MapClickHandler onMapClick={handleMapClick} />
                 {savedLocation && (

@@ -8,7 +8,8 @@ import {
 } from "react-leaflet";
 import * as XLSX from "xlsx";
 import "leaflet/dist/leaflet.css";
-import { MAP_ATTRIBUTION, MAP_TILE_URL } from "./mapConfig";
+import { getMapConfig } from "./mapConfig";
+import { useMapType } from "./MapTypeContext";
 
 import boundaryCentersUrl from "../boundary_centers.xlsx?url";
 
@@ -77,6 +78,8 @@ function downloadExtraLocationsXlsx(rows) {
 }
 
 export default function ExtraLocationsPage() {
+  const { mapTypeId } = useMapType();
+  const mapConfig = getMapConfig(mapTypeId);
   const [rows, setRows] = useState([{ id: 1, addressName: "", lat: null, lng: null }]);
   const [activeRowId, setActiveRowId] = useState(1);
   const [boundaryPoints, setBoundaryPoints] = useState([]);
@@ -318,7 +321,7 @@ export default function ExtraLocationsPage() {
             style={{ width: "100%", height: "100%" }}
             scrollWheelZoom
           >
-            <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
+            <TileLayer attribution={mapConfig.attribution} url={mapConfig.url} />
             <MapClickHandler onMapClick={handleMapClick} />
             {boundaryPoints.map((point, idx) => (
               <CircleMarker
