@@ -5,6 +5,10 @@ import * as XLSX from "xlsx";
 import "leaflet/dist/leaflet.css";
 
 import geojsonUrl from "../irq_admin_boundaries.geojson/osm-boundaries-18201500-18201560.geojson?url";
+import irqAdmin0Url from "../irq_admin_boundaries.geojson/irq_admin0.geojson?url";
+import irqAdmin1Url from "../irq_admin_boundaries.geojson/irq_admin1.geojson?url";
+import irqAdmin2Url from "../irq_admin_boundaries.geojson/irq_admin2.geojson?url";
+import irqAdmin3Url from "../irq_admin_boundaries.geojson/irq_admin3.geojson?url";
 import { getMapConfig } from "./mapConfig";
 import { useMapType } from "./MapTypeContext";
 import boundaryCentersXlsxUrl from "../boundary_centers.xlsx?url";
@@ -59,6 +63,16 @@ export default function OsmBoundariesPage() {
   const [error, setError] = useState("");
   const [showBorders, setShowBorders] = useState(true);
   const [showPoints, setShowPoints] = useState(true);
+  const [boundarySource, setBoundarySource] = useState("osm");
+  const [irqAdminData, setIrqAdminData] = useState(null);
+  const [irqAdminLoading, setIrqAdminLoading] = useState(false);
+
+  const IRQ_ADMIN_URLS = {
+    iraq0: irqAdmin0Url,
+    iraq1: irqAdmin1Url,
+    iraq2: irqAdmin2Url,
+    iraq3: irqAdmin3Url,
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +103,31 @@ export default function OsmBoundariesPage() {
       });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!IRQ_ADMIN_URLS[boundarySource]) {
+      setIrqAdminData(null);
+      return;
+    }
+    let cancelled = false;
+    setIrqAdminLoading(true);
+    setIrqAdminData(null);
+    fetch(IRQ_ADMIN_URLS[boundarySource])
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load Iraq admin GeoJSON: ${r.status}`);
+        return r.json();
+      })
+      .then((json) => {
+        if (!cancelled && json?.type === "FeatureCollection") setIrqAdminData(json);
+      })
+      .catch((e) => {
+        if (!cancelled) console.error(e);
+      })
+      .finally(() => {
+        if (!cancelled) setIrqAdminLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [boundarySource]);
 
   const center = [35.56, 45.41];
   const zoom = 10;
@@ -151,15 +190,58 @@ export default function OsmBoundariesPage() {
         </fieldset>
         {loading && <span style={{ fontSize: 13 }}>Loading…</span>}
         {error && <span style={{ fontSize: 13, color: "#ffb3b3" }}>{error}</span>}
-        {data && !loading && (
+        {boundarySource === "osm" && data && !loading && (
           <span style={{ fontSize: 13, opacity: 0.9 }}>
             {data.features?.length ?? 0} shapes
+          </span>
+        )}
+        {boundarySource.startsWith("iraq") && irqAdminData && (
+          <span style={{ fontSize: 13, opacity: 0.9 }}>
+            {irqAdminData.features?.length ?? 0} shapes
           </span>
         )}
         {boundaryPoints.length > 0 && (
           <span style={{ fontSize: 13, opacity: 0.9 }}>
             {boundaryPoints.length} points (boundary_centers.xlsx)
           </span>
+        )}
+        <fieldset
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
+            border: "1px solid rgba(255,255,255,0.3)",
+            borderRadius: 8,
+            padding: "6px 12px",
+            margin: 0,
+          }}
+        >
+          <legend style={{ fontSize: 12, opacity: 0.9 }}>Boundaries</legend>
+          {[
+            { value: "osm", label: "OSM" },
+            { value: "iraq0", label: "Iraq Admin 0" },
+            { value: "iraq1", label: "Iraq Admin 1" },
+            { value: "iraq2", label: "Iraq Admin 2" },
+            { value: "iraq3", label: "Iraq Admin 3" },
+          ].map(({ value, label }) => (
+            <label
+              key={value}
+              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}
+            >
+              <input
+                type="radio"
+                name="boundarySource"
+                value={value}
+                checked={boundarySource === value}
+                onChange={() => setBoundarySource(value)}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+        {boundarySource.startsWith("iraq") && irqAdminLoading && (
+          <span style={{ fontSize: 13 }}>Loading Iraq boundaries…</span>
         )}
         {data && (
           <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
@@ -190,8 +272,9 @@ export default function OsmBoundariesPage() {
           scrollWheelZoom
         >
           <TileLayer attribution={mapConfig.attribution} url={mapConfig.url} />
-          {data && <FitBounds data={data} />}
-          {data && showBorders && (
+          {boundarySource === "osm" && data && <FitBounds data={data} />}
+          {boundarySource.startsWith("iraq") && irqAdminData && <FitBounds data={irqAdminData} />}
+          {boundarySource === "osm" && data && showBorders && (
             <GeoJSON
               data={data}
               style={{
@@ -210,6 +293,31 @@ export default function OsmBoundariesPage() {
                   props.osm_id != null && `OSM relation: ${props.osm_id}`,
                 ].filter(Boolean);
                 layer.bindPopup(lines.join("<br/>") || "OSM boundary", {
+                  maxWidth: 320,
+                });
+              }}
+            />
+          )}
+          {boundarySource.startsWith("iraq") && irqAdminData && showBorders && (
+            <GeoJSON
+              data={irqAdminData}
+              style={{
+                color: "#3498db",
+                weight: 2,
+                opacity: 0.95,
+                fillColor: "#3498db",
+                fillOpacity: 0.15,
+              }}
+              onEachFeature={(feature, layer) => {
+                const props = feature.properties || {};
+                const lines = [
+                  props.adm0_name && `Country: ${props.adm0_name}`,
+                  props.adm1_name && `Admin 1: ${props.adm1_name}`,
+                  props.adm2_name && `Admin 2: ${props.adm2_name}`,
+                  props.adm3_name && `Admin 3: ${props.adm3_name}`,
+                  props.adm0_pcode && `P-code: ${props.adm0_pcode}`,
+                ].filter(Boolean);
+                layer.bindPopup(lines.join("<br/>") || "Iraq admin boundary", {
                   maxWidth: 320,
                 });
               }}
