@@ -11,7 +11,7 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 
-const REGION_DIRS = ["Suli", "Duhok", "Halbja"];
+const REGION_DIRS = ["Suli", "Duhok", "Halbja", "Erbil"];
 
 function isUsablePollingLatLng(lat, lng) {
   if (lat == null || lng == null) return false;
@@ -53,6 +53,53 @@ function reasonForInvalid(lat, lng, rawLat, rawLng) {
   return "unknown";
 }
 
+const POLL_NAME_HEADERS = ["ناوى بنکەى دەنگدان", "ناوی بنکەی دەنگدان"];
+const POLL_ADDRESS_HEADERS = [
+  "ناونیشانى بنکەى دەنگدان",
+  "ناونیشانی بنکەی دەنگدان",
+];
+
+function findFirstHeaderIndex(headerCells, candidates) {
+  for (const c of candidates) {
+    const i = headerCells.findIndex((h) => h === c);
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function headerLooksLikeCombinedLatLng(norm) {
+  const compact = norm.replace(/\s+/g, "").replace(/،/g, "");
+  const isPureLatCol =
+    compact === "latatude" || compact === "latitude" || compact === "lat" || compact === "y";
+  const isPureLngCol =
+    compact === "longitude" ||
+    compact === "long" ||
+    compact === "lng" ||
+    compact === "lon" ||
+    compact === "x";
+  if (isPureLatCol || isPureLngCol) return false;
+  const hasLat = compact.includes("latatude") || compact.includes("latitude");
+  const hasLng = compact.includes("longitude") || compact.includes("ongitude");
+  return hasLat && hasLng;
+}
+
+function parseLatLngFromCombinedCell(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return { lat: NaN, lng: NaN };
+  const split = s
+    .split(/[,،;/|]|\s{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (split.length >= 2) {
+    return { lat: Number(split[0]), lng: Number(split[1]) };
+  }
+  const w = s.split(/\s+/).filter(Boolean);
+  if (w.length >= 2) {
+    return { lat: Number(w[0]), lng: Number(w[1]) };
+  }
+  return { lat: NaN, lng: NaN };
+}
+
 function findMissingInBuffer(buffer, fileRel) {
   const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -62,10 +109,10 @@ function findMissingInBuffer(buffer, fileRel) {
   const headerCells = rows[0].map((c) => String(c ?? "").trim());
   const headerNorm = headerCells.map((c) => c.toLowerCase());
 
-  const idxLat = headerNorm.findIndex(
+  let idxLat = headerNorm.findIndex(
     (h) => h === "latatude" || h === "latitude" || h === "lat" || h === "y",
   );
-  const idxLng = headerNorm.findIndex(
+  let idxLng = headerNorm.findIndex(
     (h) =>
       h === "longitude" ||
       h === "long" ||
@@ -73,22 +120,39 @@ function findMissingInBuffer(buffer, fileRel) {
       h === "lon" ||
       h === "x",
   );
-  if (idxLat === -1 || idxLng === -1) return [];
+  let idxCombined = -1;
+  if (idxLat === -1 || idxLng === -1) {
+    idxCombined = headerNorm.findIndex((h) => headerLooksLikeCombinedLatLng(h));
+  }
+  if (idxCombined === -1 && (idxLat === -1 || idxLng === -1)) return [];
 
-  const idxNahya = headerCells.findIndex((h) => h === "ناحیە");
+  const idxNahya = headerCells.findIndex((h) => h === "ناحیە" || h === "ناهیە");
   const idxQada = headerCells.findIndex((h) => h === "قەزا");
-  const idxName = headerCells.findIndex((h) => h === "ناوى بنکەى دەنگدان");
-  const idxAddress = headerCells.findIndex((h) => h === "ناونیشانى بنکەى دەنگدان");
+  const idxName = findFirstHeaderIndex(headerCells, POLL_NAME_HEADERS);
+  const idxAddress = findFirstHeaderIndex(headerCells, POLL_ADDRESS_HEADERS);
 
   const missing = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row || !row.length) continue;
 
-    const rawLat = row[idxLat];
-    const rawLng = row[idxLng];
-    const lat = Number(rawLat);
-    const lng = Number(rawLng);
+    let rawLat;
+    let rawLng;
+    let lat;
+    let lng;
+    if (idxCombined >= 0) {
+      const raw = row[idxCombined];
+      rawLat = raw;
+      rawLng = raw;
+      const pair = parseLatLngFromCombinedCell(raw);
+      lat = pair.lat;
+      lng = pair.lng;
+    } else {
+      rawLat = row[idxLat];
+      rawLng = row[idxLng];
+      lat = Number(rawLat);
+      lng = Number(rawLng);
+    }
 
     const name =
       idxName >= 0 && row[idxName] != null ? String(row[idxName]).trim() : "";

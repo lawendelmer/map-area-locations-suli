@@ -14,6 +14,8 @@ import "leaflet/dist/leaflet.css";
 import { getMapConfig } from "./mapConfig";
 import { useMapType } from "./MapTypeContext";
 import {
+  applyPollingCenterCoordsToWorkbookBuffer,
+  buildEditedCentersSummaryBuffer,
   districtKeyOf,
   districtNameFromZipPath,
   enrichListingWorkbook,
@@ -121,9 +123,20 @@ function findSubCenterCoords(rowNameTrimmed, districtFromPath, subCentersRecord)
 }
 
 /**
- * @param {{ regionFolder: string, pageTitle: string, exportZipFilename: string }} props
+ * @param {{
+ *   regionFolder: string,
+ *   pageTitle: string,
+ *   exportZipFilename: string,
+ *   exportCentersSummaryOnly?: boolean,
+ * }} props
+ * When exportCentersSummaryOnly, download is a single .xlsx of district/subdistrict centers only (no source workbooks).
  */
-export default function RegionCenterEditorPage({ regionFolder, pageTitle, exportZipFilename }) {
+export default function RegionCenterEditorPage({
+  regionFolder,
+  pageTitle,
+  exportZipFilename,
+  exportCentersSummaryOnly = false,
+}) {
   const { mapTypeId, setMapTypeId, MAP_TYPES } = useMapType();
   const mapConfig = getMapConfig(mapTypeId);
   const [loading, setLoading] = useState(true);
@@ -291,10 +304,27 @@ export default function RegionCenterEditorPage({ regionFolder, pageTitle, export
       if (!activeKey) return;
       if (activeKey.startsWith("d:")) {
         const name = activeKey.slice(2);
-        setDistrictCenters((prev) => ({
-          ...prev,
-          [name]: { lat, lng },
-        }));
+        setDistrictCenters((prev) => {
+          const old = prev[name];
+          if (old && Number.isFinite(old.lat) && Number.isFinite(old.lng)) {
+            const dLat = lat - old.lat;
+            const dLng = lng - old.lng;
+            setSubCenters((sp) => {
+              const ns = { ...sp };
+              for (const [gk, c] of Object.entries(sp)) {
+                if (
+                  String(c.qada || "").trim() === name &&
+                  Number.isFinite(c.lat) &&
+                  Number.isFinite(c.lng)
+                ) {
+                  ns[gk] = { ...c, lat: c.lat + dLat, lng: c.lng + dLng };
+                }
+              }
+              return ns;
+            });
+          }
+          return { ...prev, [name]: { lat, lng } };
+        });
         return;
       }
       if (activeKey.startsWith("s:")) {
@@ -313,6 +343,23 @@ export default function RegionCenterEditorPage({ regionFolder, pageTitle, export
     setExporting(true);
     setError("");
     try {
+      if (exportCentersSummaryOnly) {
+        const buf = buildEditedCentersSummaryBuffer(
+          sortedDistrictHierarchy,
+          districtCenters,
+          subsByDistrict,
+        );
+        const blob = new Blob([buf], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = exportZipFilename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        return;
+      }
+
       const zip = new JSZip();
       const entries = Object.entries(getRegionXlsxGlob(regionFolder));
 
@@ -324,7 +371,12 @@ export default function RegionCenterEditorPage({ regionFolder, pageTitle, export
         const buffer = await res.arrayBuffer();
 
         if (workbookHasPollingCoordColumns(buffer)) {
-          zip.file(zipPath, new Uint8Array(buffer));
+          const outBytes = applyPollingCenterCoordsToWorkbookBuffer(
+            buffer,
+            subCenters,
+            districtCenters,
+          );
+          zip.file(zipPath, outBytes);
           continue;
         }
 
@@ -368,7 +420,15 @@ export default function RegionCenterEditorPage({ regionFolder, pageTitle, export
     } finally {
       setExporting(false);
     }
-  }, [districtCenters, subCenters, regionFolder, exportZipFilename]);
+  }, [
+    districtCenters,
+    subCenters,
+    subsByDistrict,
+    sortedDistrictHierarchy,
+    regionFolder,
+    exportZipFilename,
+    exportCentersSummaryOnly,
+  ]);
 
   const activeHint = activeKey
     ? "کلیک لەسەر نەخشە بکە بۆ دانانی پێگەی هەڵبژێردراو."
@@ -555,6 +615,9 @@ export default function RegionCenterEditorPage({ regionFolder, pageTitle, export
         <a href="/halbja-centers" style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none", fontSize: 13 }}>
           Halbja
         </a>
+        <a href="/erbil-centers" style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none", fontSize: 13 }}>
+          Erbil
+        </a>
         <span style={{ fontWeight: 700 }}>{pageTitle}</span>
         <fieldset>
           <legend>Map type</legend>
@@ -585,7 +648,11 @@ export default function RegionCenterEditorPage({ regionFolder, pageTitle, export
           disabled={loading || !seeded || exporting}
           onClick={exportZip}
         >
-          {exporting ? "ئامادەکردن…" : `داگرتنی ZIP (${regionFolder})`}
+          {exporting
+            ? "ئامادەکردن…"
+            : exportCentersSummaryOnly
+              ? `داگرتنی ناوەندەکان — Excel (${regionFolder})`
+              : `داگرتنی ZIP (${regionFolder})`}
         </button>
         {loading && <span style={{ fontSize: 13 }}>بارکردن… {loadDetail}</span>}
         {!loading && error && (

@@ -161,7 +161,7 @@ export default function OsmBoundariesPage() {
           href="/polling-center"
           style={{ color: "rgba(255,255,255,0.9)", textDecoration: "none", fontWeight: 600 }}
         >
-          → Polling centers (Suli · Duhok · Halbja)
+          → Polling centers (Suli · Duhok · Halbja · Erbil)
         </a>
         <a
           href="/suli-centers"
@@ -180,6 +180,12 @@ export default function OsmBoundariesPage() {
           style={{ color: "rgba(255,255,255,0.9)", textDecoration: "none", fontWeight: 600 }}
         >
           → Halbja center editor
+        </a>
+        <a
+          href="/erbil-centers"
+          style={{ color: "rgba(255,255,255,0.9)", textDecoration: "none", fontWeight: 600 }}
+        >
+          → Erbil center editor
         </a>
         <span style={{ fontWeight: 700 }}>
           OSM boundaries (saved GeoJSON)

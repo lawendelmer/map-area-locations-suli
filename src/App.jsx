@@ -8,6 +8,7 @@ import PollingCenterPage from "./PollingCenterPage";
 import SuliCenterEditorPage from "./SuliCenterEditorPage";
 import DuhokCenterEditorPage from "./DuhokCenterEditorPage";
 import HalbjaCenterEditorPage from "./HalbjaCenterEditorPage";
+import ErbilCenterEditorPage from "./ErbilCenterEditorPage";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
               path="/halbja-centers"
               element={<HalbjaCenterEditorPage />}
             />
+            <Route path="/erbil-centers" element={<ErbilCenterEditorPage />} />
           </Routes>
         </div>
       </BrowserRouter>

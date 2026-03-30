@@ -279,7 +279,9 @@ export default function PollingCenterPage() {
             : "هیچ بنکەیەک نەدۆزرایەوە",
         );
         if (!all.length) {
-          setError("هیچ خاڵێکی لە فایلەکانی Excel نەدۆزرایەوە (پێویست بە ستوونەکانی Latatude و Longitude).");
+          setError(
+            "هیچ خاڵێکی لە فایلەکانی Excel نەدۆزرایەوە (پێویست بە Latatude/Longitude یان ستوونێکی تێکەڵاو).",
+          );
         }
       }
       if (!cancelled) setLoading(false);
@@ -409,7 +411,7 @@ export default function PollingCenterPage() {
         >
           ← OSM boundaries
         </a>
-        <span style={{ fontWeight: 700 }}>بنکەکانی دەنگدان — Suli · Duhok · Halbja</span>
+        <span style={{ fontWeight: 700 }}>بنکەکانی دەنگدان — Suli · Duhok · Halbja · Erbil</span>
         <a
           href="/suli-centers"
           style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none", fontSize: 13 }}
@@ -427,6 +429,12 @@ export default function PollingCenterPage() {
           style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none", fontSize: 13 }}
         >
           Halbja centers
+        </a>
+        <a
+          href="/erbil-centers"
+          style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none", fontSize: 13 }}
+        >
+          Erbil centers
         </a>
         <fieldset
           style={{
