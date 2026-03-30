@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
+  Pane,
   Polygon,
   Popup,
   TileLayer,
@@ -614,59 +615,64 @@ export default function PollingCenterPage() {
           >
             <TileLayer attribution={mapConfig.attribution} url={mapConfig.url} />
             {points.length > 0 && <FitPollingBounds points={points} />}
-            {boundaryPolygons.map((layer) => (
-              <Polygon
-                key={layer.key}
-                positions={layer.positions}
-                pathOptions={layer.pathOptions}
-              >
-                <Popup>
-                  <div style={{ fontSize: 13, maxWidth: 280 }}>{layer.label}</div>
-                </Popup>
-              </Polygon>
-            ))}
-            {points.map((p, idx) => {
-              const sk = mapStyleGroupKey(p);
-              return (
-              <CircleMarker
-                key={`${sk}-${idx}-${p.lat}-${p.lng}`}
-                center={[p.lat, p.lng]}
-                radius={6}
-                pathOptions={
-                  colorStyleByGroupKey.get(sk) ??
-                  pathOptionsForSubdistrictShade(0, 1, 200)
-                }
-              >
-                <Popup>
-                  <div style={{ minWidth: 200, fontSize: 13 }}>
-                    <span style={{ fontSize: 11, opacity: 0.75 }}>{p.region || "Suli"}</span>
-                    <br />
-                    <strong>{p.name}</strong>
-                    {p.address && (
-                      <>
+            {/* Lower z-index than markers so convex hull fills don’t steal clicks from points. */}
+            <Pane name="pollingBoundaries" style={{ zIndex: 390 }}>
+              {boundaryPolygons.map((layer) => (
+                <Polygon
+                  key={layer.key}
+                  positions={layer.positions}
+                  pathOptions={layer.pathOptions}
+                >
+                  <Popup>
+                    <div style={{ fontSize: 13, maxWidth: 280 }}>{layer.label}</div>
+                  </Popup>
+                </Polygon>
+              ))}
+            </Pane>
+            <Pane name="pollingMarkers" style={{ zIndex: 650 }}>
+              {points.map((p, idx) => {
+                const sk = mapStyleGroupKey(p);
+                return (
+                  <CircleMarker
+                    key={`${sk}-${idx}-${p.lat}-${p.lng}`}
+                    center={[p.lat, p.lng]}
+                    radius={6}
+                    pathOptions={
+                      colorStyleByGroupKey.get(sk) ??
+                      pathOptionsForSubdistrictShade(0, 1, 200)
+                    }
+                  >
+                    <Popup>
+                      <div style={{ minWidth: 200, fontSize: 13 }}>
+                        <span style={{ fontSize: 11, opacity: 0.75 }}>{p.region || "Suli"}</span>
                         <br />
-                        {p.address}
-                      </>
-                    )}
-                    {(p.qada || p.nahya) && (
-                      <>
+                        <strong>{p.name}</strong>
+                        {p.address && (
+                          <>
+                            <br />
+                            {p.address}
+                          </>
+                        )}
+                        {(p.qada || p.nahya) && (
+                          <>
+                            <br />
+                            <span style={{ opacity: 0.85 }}>
+                              {p.qada && <>{p.qada}</>}
+                              {p.qada && p.nahya && " · "}
+                              {p.nahya && <>{p.nahya}</>}
+                            </span>
+                          </>
+                        )}
                         <br />
-                        <span style={{ opacity: 0.85 }}>
-                          {p.qada && <>{p.qada}</>}
-                          {p.qada && p.nahya && " · "}
-                          {p.nahya && <>{p.nahya}</>}
+                        <span style={{ fontVariantNumeric: "tabular-nums", opacity: 0.8 }}>
+                          {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
                         </span>
-                      </>
-                    )}
-                    <br />
-                    <span style={{ fontVariantNumeric: "tabular-nums", opacity: 0.8 }}>
-                      {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
-                    </span>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            );
-            })}
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                );
+              })}
+            </Pane>
           </MapContainer>
         </div>
       </div>
