@@ -4,6 +4,10 @@ import KomitaMap from "./KomitaMap";
 import OsmBoundariesPage from "./OsmBoundariesPage";
 import RegistrationPage from "./RegistrationPage";
 import ExtraLocationsPage from "./ExtraLocationsPage";
+import PollingCenterPage from "./PollingCenterPage";
+import SuliCenterEditorPage from "./SuliCenterEditorPage";
+import DuhokCenterEditorPage from "./DuhokCenterEditorPage";
+import HalbjaCenterEditorPage from "./HalbjaCenterEditorPage";
 
 function App() {
   return (
@@ -11,10 +15,17 @@ function App() {
       <BrowserRouter>
         <div style={{ width: "100%", height: "100vh", margin: 0, padding: 0 }}>
           <Routes>
-          <Route path="/" element={<OsmBoundariesPage />} />
-          <Route path="/extract" element={<KomitaMap />} />
-          <Route path="/register" element={<RegistrationPage />} />
-          <Route path="/extra-locations" element={<ExtraLocationsPage />} />
+            <Route path="/" element={<OsmBoundariesPage />} />
+            <Route path="/extract" element={<KomitaMap />} />
+            <Route path="/register" element={<RegistrationPage />} />
+            <Route path="/extra-locations" element={<ExtraLocationsPage />} />
+            <Route path="/polling-center" element={<PollingCenterPage />} />
+            <Route path="/suli-centers" element={<SuliCenterEditorPage />} />
+            <Route path="/duhok-centers" element={<DuhokCenterEditorPage />} />
+            <Route
+              path="/halbja-centers"
+              element={<HalbjaCenterEditorPage />}
+            />
           </Routes>
         </div>
       </BrowserRouter>
